@@ -12,6 +12,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  var filesAccessed = <String>[];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -19,7 +21,26 @@ class _HomePageState extends State<HomePage> {
         title: const Text("DOC READER"),
       ),
       body: Container(
-        child: ListView(),
+        child: ListView.builder(
+            itemCount: filesAccessed.length,
+            itemBuilder: (context, index){
+              var path = filesAccessed[index];
+              return Card(
+                child: GestureDetector(
+                  onTap: (){
+                    openReaderPage(context, File(path));
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(5),
+                    child: Text(
+                        "${path.split("/").last}",//this gets the filename
+                      style: Theme.of(context).textTheme.headline6,
+                    ),
+                  ),
+                ),
+              );
+            }
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.folder_open),
@@ -38,13 +59,17 @@ class _HomePageState extends State<HomePage> {
     if(result != null){
       //the user selected a file
       //create file instance
-      File docFile = File(result.files.first.path!);
+      String path = result.files.first.path!;
+      File docFile = File(path);
+
 
       //navigate to ReaderPage
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context)=>ReaderPage(document: docFile,))
-      );
+      openReaderPage(context, docFile);
+
+      setState((){
+        //add to file accessed
+        filesAccessed.add(path);
+      });
     }else{
       //user cancelled the selection process
       ScaffoldMessenger.of(context).showSnackBar(
@@ -53,5 +78,12 @@ class _HomePageState extends State<HomePage> {
         )
       );
     }
+  }
+
+  void openReaderPage(BuildContext context, File docFile) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context)=>ReaderPage(document: docFile,))
+    );
   }
 }
