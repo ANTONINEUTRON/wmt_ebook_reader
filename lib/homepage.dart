@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:wmt_ebook_reader/files_repository.dart';
 import 'package:wmt_ebook_reader/reader_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -12,6 +13,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  var filesRepo = FilesRepository();
   var filesAccessed = <String>[];
 
   @override
@@ -20,27 +22,44 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text("DOC READER"),
       ),
-      body: Container(
-        child: ListView.builder(
-            itemCount: filesAccessed.length,
-            itemBuilder: (context, index){
-              var path = filesAccessed[index];
-              return Card(
-                child: GestureDetector(
-                  onTap: (){
-                    openReaderPage(context, File(path));
-                  },
-                  child: Container(
-                    padding: EdgeInsets.all(5),
-                    child: Text(
-                        "${path.split("/").last}",//this gets the filename
-                      style: Theme.of(context).textTheme.headline6,
+      body: FutureBuilder(
+        future: filesRepo.getFiles(),
+        builder: (context, snapshot){
+          if(snapshot.data == null) {
+            return CircularProgressIndicator();
+          }
+
+          //assign the data to list of files accessed
+          filesAccessed = snapshot.data as List<String>;
+          return ListView.builder(
+              itemCount: filesAccessed.length,
+              itemBuilder: (context, index){
+                var path = filesAccessed[index];
+                return Dismissible(
+                  key: Key(path),
+                  child: Card(
+                    child: GestureDetector(
+                      onTap: (){
+                        openReaderPage(context, File(path));
+                      },
+                      child: Container(
+                        padding: EdgeInsets.all(5),
+                        child: Text(
+                          "${path.split("/").last}",//this gets the filename
+                          style: Theme.of(context).textTheme.headline6,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              );
-            }
-        ),
+                  onDismissed: (dismissDirection){
+                    filesAccessed.remove(path);
+                    filesRepo.removeFile(path);
+                    setState((){});
+                  },
+                );
+              }
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.folder_open),
@@ -67,8 +86,10 @@ class _HomePageState extends State<HomePage> {
       openReaderPage(context, docFile);
 
       setState((){
-        //add to file accessed
+        //add to file accessed list
         filesAccessed.add(path);
+        //save to storage
+        filesRepo.saveFiles(filesAccessed);
       });
     }else{
       //user cancelled the selection process
